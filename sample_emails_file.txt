@@ -1,0 +1,3 @@
+username1@hotmail.com
+username2@gmail.com
+#use_hashtag_to_ignore@gmail.com

@@ -1,0 +1,36 @@
+{
+    "email_account": {
+        "SMTP_server": "smtp.office365.com",
+        "port": 587,
+        "timeout": 400,
+        "email": "",
+        "password": ""
+    },
+    "email_message_contents": {
+        "sender_name": "Your Name <your_email@email.com>",
+        "subject": "email subject",
+        "nody_path": "text or ./path/ot/body/text .html or .txt",
+        "attachments": [
+            {
+                "filename": "1.pdf",
+                "path": "./Default/attachment/path/1.pdf",
+                "type": "pdf",
+                "subType": "octet-stream",
+                "mainType": "application"
+            },
+            {
+                "file_name": "1.docx",
+                "path": "./Default/attachment/path/1.docx",
+                "type": "docx",
+                "subType": "octet-stream",
+                "mainType": "application"
+            }
+        ]
+    },
+    "easymail_settings": {
+        "spam_protection_period": 86000,
+        "allow_duplicate": false,
+        "force_sending": false,
+        "deliver_report": false
+    }
+}
