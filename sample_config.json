@@ -9,7 +9,7 @@
     "email_message_contents": {
         "sender_name": "Your Name <your_email@email.com>",
         "subject": "email subject",
-        "nody_path": "text or ./path/ot/body/text .html or .txt",
+        "body_path": "./path/ot/body/text .html or .txt",
         "attachments": [
             {
                 "filename": "1.pdf",
