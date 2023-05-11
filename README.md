@@ -1,5 +1,5 @@
 # EasyMail
-Automate sending mails to various email accounts separately. EasyMail creates `timestamp.json` and stores a timestamp to each e-mail account to avoid spamming. Get your email settings from [here](https://emailsettings.email)
+Automate sending emails. EasyMail creates `timestamp.json` and stores a timestamp to each e-mail account to avoid spamming. Get your email settings from [here](https://emailsettings.email)
 
 ## Usage:
 - **Sending emails to contacts list from files**:
