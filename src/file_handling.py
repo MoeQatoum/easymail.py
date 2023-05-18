@@ -22,7 +22,7 @@ class File:
         self.name = path.split("/")[-1]
         self.type = File.FileType(path.split(".")[-1].lower())
 
-    def read_file(self, mode = None) -> Any: # TODO: change to proper type
+    def read_file(self, mode = None) -> bytes|str:
         if not mode:
             match self.type:
                 case File.FileType.PDF | File.FileType.DOC | File.FileType.DOCX:
@@ -72,13 +72,13 @@ def load_timestamp(timestamp_path: str) -> dict[str, str]:
     return json.loads(File(timestamp_path).read_file())
 
 
-def load_attachment(attachment_path: str, mode = None):
-    attachment = File(attachment_path)
+def load_attachment(attachment_path: str, mode = None) -> dict[str, str|File.FileType|bytes]:
+    f = File(attachment_path)
     return {
-                "filename": attachment.file_name(),
-                "path": attachment_path,
-                "type": attachment.file_type(),
-                "subtype": "octet-stream",
-                "maintype": "application",
-                "data": attachment.read_file(mode),
+            "filename": f.file_name(),
+            "path": attachment_path,
+            "type": f.file_type(),
+            "subtype": "octet-stream",
+            "maintype": "application",
+            "data": f.read_file(mode),
             }

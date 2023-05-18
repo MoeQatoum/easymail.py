@@ -25,7 +25,7 @@ class Attachment:
     data: bytes = field(default=None)
 
     def __post_init__(self):
-        if data:= isinstance(File(self.path).read_file(), bytes): self.data = data
+        if not self.data: self.data = File(self.path).read_file("rb")
 
     def to_dict(self):
         return {k:v for k,v in  asdict(self).items() if k in ["filename", "subtype", "maintype"]}
@@ -38,7 +38,7 @@ class EmailMessageContents:
     sender_email: str
     subject: str
     body_path: str | None
-    attachments: List[Attachment] | None
+    attachments: List[Attachment] | None = field(default=None)
     body: str = field(default=None)
 
     def __post_init__(self):
