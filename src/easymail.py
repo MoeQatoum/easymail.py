@@ -1,9 +1,36 @@
+
 import time, smtplib, sys, shutil
+
 from email.message import EmailMessage
+from email.headerregistry import Address
 
 from common import *
 from mailing_list import *
 
+class EasyEmailMessage(EmailMessage):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(policy=kwargs.get("policy"))
+
+        if contents := kwargs.get("contents"):
+            self['subject'] = contents.subject
+            self['From'] = Address(contents.sender_name, *contents.sender_email.split('@'))
+            if contents.body_path:
+                if File(contents.body_path).file_type() == File.FileType.TXT: 
+                    self.set_content(contents.body)
+                elif File(contents.body_path).file_type() == File.FileType.HTML: 
+                    self.set_content(contents.body, subtype=File.FileType.HTML.value)
+                else:
+                    raise Exception("body file must be of type HTML or txt.")
+            elif contents.body:
+                    self.set_content(bytes(contents.body, 'utf-8').decode('unicode_escape'))
+
+            if contents.attachments:
+                for att in contents.attachments:
+                    self.add_attachment(att.data, **att.to_dict())
+
+        if to := kwargs.get("to"):
+            self['To'] = Address(to.split("@")[0], *to.split("@"))
+    
 class EasyMail:
     class MessageBlockedReason(enum.Enum):
         Allowed = 0
@@ -23,22 +50,22 @@ class EasyMail:
 
         self.black_list = json.loads(File(kwargs["black_list"]).read_file()) if kwargs.get("black_list") else [] 
 
-    def send_email(self, to: list[str] | str, email_msg_contents: EmailMessageContents)-> None:
-        msg = EasyMail.construct_email_message(email_msg_contents)
+    def send_email(self, to: list[str] | str, contents: EmailMessageContents)-> None:
         if isinstance(to, str): to = [to]
         elif not isinstance(to, list): raise TypeError("to must be either a str ot list[str]")
         count = len(to)
         with self.smtp_server as smtp:
-            self._log_in()
-            for ind, email in enumerate(to):
+            self._log_in(smtp)
+            for ind, contact in enumerate(to):
+                msg = EasyEmailMessage(contents=contents, to=contact)
                 ts = load_timestamp("./timestamp.json")
                 block_reason = EasyMail.MessageBlockedReason.Allowed
 
-                if email in self.black_list:
+                if contact in self.black_list:
                     block_reason = EasyMail.MessageBlockedReason.BlackListedDestination
 
-                if email in ts.keys():
-                    if delta_ts:= delta_time_hrs(ts.get(email)) < 24.:
+                if contact in ts.keys():
+                    if delta_ts:= delta_time_hrs(ts.get(contact)) < 24.:
                         block_reason = EasyMail.MessageBlockedReason.SpamProtectionPeriod
 
                 color = ""
@@ -46,7 +73,7 @@ class EasyMail:
                 details = ""
 
                 if block_reason == EasyMail.MessageBlockedReason.Allowed or self.settings.force_sending:
-                    self._send(email, msg, ind=ind, count=count)
+                    self._send(smtp, contact, msg, ind=ind, count=count)
                     color = G
                     if block_reason != EasyMail.MessageBlockedReason.Allowed:
                         action = "Forced"
@@ -66,45 +93,32 @@ class EasyMail:
                             details = f'", delta time {delta_time_hrs(datetime.now().strftime(DATE_TIME_FORMAT)):.2f} hrs'
                             color = Y
 
-                print(color + f'[{ind+1:0>3}-{count:0>3}] {action}: "' + UL + email + W + color + '"' + details + W)
+                print(color + f'[{ind+1:0>3}-{count:0>3}] {action}: "' + UL + contact + W + color + '"' + details + W)
 
         print("[INFO] Connection closed...")
 
-    @staticmethod
-    def construct_email_message(email_message_contents: EmailMessageContents) -> EmailMessage:
-        msg = EmailMessage()
-        msg["From"] = email_message_contents.sender_name
-        msg["subject"] = email_message_contents.subject
-        # TODO: msg['Disposition-Notification-To'] = email
-        msg.set_content(email_message_contents.body, subtype=File(email_message_contents.body_path).file_type().value)
-        for att in email_message_contents.attachments:
-            msg.add_attachment(att.data,**att.to_dict())
-        return msg
-
-    def _send(self, to: str, email_msg: EmailMessage, **kwargs) -> None:
-        email_msg.__delitem__("to")
-        email_msg["to"] = to
+    def _send(self, smtp: smtplib.SMTP, to: str, email_msg: EmailMessage, **kwargs) -> None:
         try:
-            self.smtp_server.send_message(email_msg, rcpt_options=['NOTIFY=SUCCESS,DELAY,FAILURE'] if self.settings.delivery_report else None)
+            smtp.send_message(email_msg, rcpt_options=['NOTIFY=SUCCESS,DELAY,FAILURE'] if self.settings.delivery_report else None)
             update_timestamp("./timestamp.json" ,to)
             time.sleep(0.5)
 
         except smtplib.SMTPRecipientsRefused as e:
             self.refused += 1
-            print(R + f"[{kwargs['ind']+1:0>3}-{kwargs['count']:0>3}] Refused: " + UL + to + W)
+            print(R + f"[SMTP ERROR] [{kwargs['ind']+1:0>3}-{kwargs['count']:0>3}] Refused: " + UL + to + W)
             print(R + "Reason:", e + W)
 
         except Exception as e:
-            print(R + "[ERROR]",  e, W)
+            print(R + "[SMTP ERROR]",  e, W)
             raise e
 
-    def _log_in(self):
+    def _log_in(self, smtp: smtplib.SMTP) -> None:
             try:
-                self.smtp_server.starttls()
+                smtp.starttls()
                 print("[INFO] Logging in...")
-                self.smtp_server.login(self.account.email.strip(), self.account.password.strip())
+                smtp.login(self.account.email.strip(), self.account.password.strip())
             except Exception as e:
-                print(R + f"[ERROR]", e, W)
+                print(R + f"[SMTP ERROR]", e, W)
                 sys.exit()
 
     def log_report(self):

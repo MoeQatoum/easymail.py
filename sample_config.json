@@ -1,5 +1,5 @@
 {
-    "email_account": {
+    "account": {
         "SMTP_server": "smtp.office365.com",
         "port": 587,
         "timeout": 400,

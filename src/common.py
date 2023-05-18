@@ -35,9 +35,10 @@ class Attachment:
 @dataclass
 class EmailMessageContents:
     sender_name: str
+    sender_email: str
     subject: str
-    body_path: str
-    attachments: List[Attachment]
+    body_path: str | None
+    attachments: List[Attachment] | None
     body: str = field(default=None)
 
     def __post_init__(self):
@@ -46,12 +47,18 @@ class EmailMessageContents:
         else:
             raise FileNotFoundError(f"{self.body_path} was not found.")
 
-    def change_body_path(self, body_path: str):
-        if File.is_file(body_path): 
-            self.body_path = body_path.strip().strip("\n")
+    def change_body(self, body: str):
+        if len(body) > 255 and isinstance(body, str):
+            self.body_path = None
+            self.body = body
+        elif File.is_file(body): 
+            self.body_path = body.strip().strip("\n")
             self.body = File(self.body_path).read_file("r").strip().strip("\n")
+        elif isinstance(body, str):
+            self.body_path = None
+            self.body = body 
         else:
-            raise FileNotFoundError(f"{body_path} was not found.")
+            raise Exception("Unknown body format")
 
     def format_body(self, *args):
         if "{}" not in self.body: raise Exception("email body cannot be formatted.")
@@ -91,4 +98,8 @@ def update_timestamp(timestamp_path: str, email: str):
 
 def load_config(config_path: str) -> tuple[AccountConfig, EmailMessageContents, EasyMailSettings]:
     config = json.loads(File(config_path.strip().strip("\n")).read_file())
-    return AccountConfig(**config["email_account"]), EmailMessageContents(**config["email_message_contents"]), EasyMailSettings(**config["easymail_settings"])
+    return (
+        AccountConfig(**config["account"]), 
+        EmailMessageContents(sender_email=config["account"]["email"], **config["email_message_contents"]), 
+        EasyMailSettings(**config["easymail_settings"])
+    )

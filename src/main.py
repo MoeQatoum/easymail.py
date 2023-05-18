@@ -19,9 +19,9 @@ if __name__ == "__main__":
     )
     email_msg_args.add_argument(
         "-b",
-        "--body-path",
+        "--body",
         default=None,
-        help="Email message body path, can be HTML file, or TXT file.",
+        help="Email message body path, can be string, HTML file, or TXT file.",
     )
     email_msg_args.add_argument(
         "-a",
@@ -74,12 +74,12 @@ if __name__ == "__main__":
     if args.delivery_report: easy_mail_settings.delivery_report = True; print(f"{Y}[info] Delivery report enabled.{W}")
     if args.subject: email_message_contents.subject = args.subject
     if args.attachment_path: email_message_contents.attachments = [Attachment(**load_attachment(attachment_path)) for attachment_path in args.attachment_path.split(",")]
-    if args.body_path: email_message_contents.change_body_path(args.body_path)
+    if args.body: email_message_contents.change_body(args.body)
     if args.body_format: email_message_contents.format_body(*args.body_format.strip().strip("\n").split(","))
     if args.force: easy_mail_settings.force_sending = args.force
         
     print(f"[INFO] Subject: {email_message_contents.subject}")
-    print(f"[INFO] Body: {email_message_contents.body_path}")
+    print(f"[INFO] Body path: {email_message_contents.body_path}")
     print(f"[INFO] Attachment path: {[att.path for att in email_message_contents.attachments]}")
 
     mailing_list = get_mailing_list(args.mailList, *[int(range) for range in args.range.split("-")] if args.range else [1, 0])
