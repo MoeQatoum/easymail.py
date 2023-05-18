@@ -15,3 +15,5 @@ $ ./easymail email_account_1@gmail.com,email_account_2@hotmail.com.com
 ```
 
 use ```--help``` flag for all options.
+[config.json format](./sample_config.json)
+[mail list sample](./sample_mail_list.txt)
