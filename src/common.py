@@ -1,19 +1,12 @@
-
-from pydantic import validate_arguments
-from dataclasses import dataclass, field, asdict
-from typing import Any, List
+from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
+from dataclasses import asdict
+from typing import List
 from datetime import datetime
+import re
+from consts import *
 
 from file_handling import *
-
-# consts
-R = "\033[91m"  # red
-G = "\033[92m"  # green
-C = "\033[96m"  # cyan
-Y = "\033[93m"  # yellow
-W = "\033[00m"  # white
-UL = "\033[4m"  # under line
-DATE_TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 @dataclass
 class Attachment:
@@ -22,64 +15,55 @@ class Attachment:
     type: File.FileType
     subtype: str
     maintype: str
-    data: bytes = field(default=None)
+    data: bytes = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.data: self.data = File(self.path).read_file("rb")
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, str]:
         return {k:v for k,v in  asdict(self).items() if k in ["filename", "subtype", "maintype"]}
 
-
-@validate_arguments
 @dataclass
 class EmailMessageContents:
     sender_name: str
     sender_email: str
     subject: str
-    body_path: str | None
-    attachments: List[Attachment] | None = field(default=None)
-    body: str = field(default=None)
+    attachments: List[Attachment] | None = None
+    body_tokens: List[str] = None
+    body: str = None
+    body_format: File.FileType | None = None
 
-    def __post_init__(self):
-        if File.is_file(self.body_path): 
-            self.body = File(self.body_path).read_file("r")
-        else:
-            raise FileNotFoundError(f"{self.body_path} was not found.")
+    def __post_init__(self) -> None:
+        self.set_body(self.body)
+        print("post init", self.body)
 
-    def change_body(self, body: str):
-        if len(body) > 255 and isinstance(body, str):
-            self.body_path = None
-            self.body = body
-        elif File.is_file(body): 
-            self.body_path = body.strip().strip("\n")
-            self.body = File(self.body_path).read_file("r").strip().strip("\n")
-        elif isinstance(body, str):
-            self.body_path = None
-            self.body = body 
-        else:
-            raise Exception("Unknown body format")
+    def set_body(self, body: str):
+        self.body, self.body_format = load_body(body)
+        self.body_tokens = [match.group() for match in re.finditer(TOKEN_PATTERN, self.body)]
 
-    def format_body(self, *args):
-        if "{}" not in self.body: raise Exception("email body cannot be formatted.")
-        if self.body.count("{}") > len(args): raise IndexError(f"Replacement index {self.body.count('{}') - 1} out of range for positional args tuple")
-        if self.body.count("{}") < len(args): raise IndexError(f"positional args index {len(args) - 1} out of range for replacement")
-        self.body = self.body.format(*args)    
+    def has_tokens(self) -> bool:
+        return bool(self.body_tokens)
+    
+    def token_count(self) -> int:
+        return len([match.group() for match in re.finditer(TOKEN_PATTERN, self.body)])
 
+    def unique_tokens_count(self) -> int:
+        return len(list(set([match.group() for match in re.finditer(TOKEN_PATTERN, self.body)])))
 
-@validate_arguments
-@dataclass
-class AccountConfig:
+    def replace_tokens(self, replacement: dict[str, str]):
+        if not self.has_tokens(): raise Exception("email body doesn't has and tokens.")
+        if self.unique_tokens_count() != len(replacement.keys()): 
+            raise Exception(f"{len(replacement.keys())} tokens provided, while email body has {self.token_count()} replacement tokens.")
+        self.body = re.sub(TOKEN_PATTERN, lambda match: replacement[match.group()], self.body)
+
+class AccountConfig(BaseModel):
     SMTP_server: str
     port: int
     email: str
     password: str
-    timeout: int = field(default=400)
+    timeout: int = 400
 
-
-@validate_arguments
-@dataclass
-class EasyMailSettings:
+class EasyMailSettings(BaseModel):
     spam_protection_period:int
     allow_duplicate: bool
     force_sending: bool

@@ -1,8 +1,8 @@
-import argparse, sys
-
+import argparse 
 from easymail import *
 
 if __name__ == "__main__":
+    
     parser = argparse.ArgumentParser()
     settings_args = parser.add_argument_group(title="Easy Mail settings options")
     email_msg_args = parser.add_argument_group(title="Email Message options")
@@ -62,6 +62,15 @@ if __name__ == "__main__":
         default=None,
         help="body formatting, separated by ','",
     )
+    email_msg_args.add_argument(
+        "-t",
+        "--token",
+        type=str,
+        nargs='+', 
+        action='append',
+        default=None,
+        help="replace token with regex pattern \"\\{[A_Z]_\\}\" in mail body. [[\"{TOKEN}\",\"value\"]]"
+    )
 
     args = parser.parse_args()
 
@@ -69,21 +78,27 @@ if __name__ == "__main__":
     assert pathlib.Path("./blacklist.json").is_file, "./blacklist.json was not found" 
     assert pathlib.Path("./config.json" if not args.config_file_path else args.config_file_path.strip().strip("\n")), "config.json was not found"
 
-    email_account, email_message_contents, easy_mail_settings = load_config("./config.json" if not args.config_file_path else args.config_file_path)
+    email_account, email_contents, email_settings = load_config("./config.json" if not args.config_file_path else args.config_file_path)
 
-    if args.delivery_report: easy_mail_settings.delivery_report = True; print(f"{Y}[info] Delivery report enabled.{W}")
-    if args.subject: email_message_contents.subject = args.subject
-    if args.attachment_path: email_message_contents.attachments = [Attachment(**load_attachment(attachment_path)) for attachment_path in args.attachment_path.split(",")]
-    if args.body: email_message_contents.change_body(args.body)
-    if args.body_format: email_message_contents.format_body(*args.body_format.strip().strip("\n").split(","))
-    if args.force: easy_mail_settings.force_sending = args.force
-        
-    print(f"[INFO] Subject: {email_message_contents.subject}")
-    print(f"[INFO] Body path: {email_message_contents.body_path}")
-    print(f"[INFO] Attachment path: {[att.path for att in email_message_contents.attachments]}")
+    if args.delivery_report: email_settings.delivery_report = True; print(f"{Y}[info] Delivery report enabled.{W}")
+    if args.subject: email_contents.subject = args.subject
+    if args.attachment_path: email_contents.attachments = [Attachment(**load_attachment(attachment_path)) for attachment_path in args.attachment_path.split(",")]
+    if args.body: email_contents.set_body(args.body)
+    if args.body_format: email_contents.format_body(*args.body_format.strip().strip("\n").split(","))
+    if args.force: email_settings.force_sending = args.force
+
+    if args.token:
+        if len(args.token) != len(list(set([t[0] for t in args.token]))): raise Exception("got duplicate tokens, review -t|--token arguments.")
+        replace_tokens: dict = {t[0]:t[1] for t in args.token}
+        email_contents.replace_tokens(replace_tokens)
+
+    print(f"[INFO] Subject: {email_contents.subject}")
+    print(f"[INFO] Body path: {None if not args.body else args.body if File.is_file(args.body) else 'NOT A PATH'}")
+    print(f"[INFO] Attachment path: {[att.path for att in email_contents.attachments]}")
+
 
     mailing_list = get_mailing_list(args.mailList, *[int(range) for range in args.range.split("-")] if args.range else [1, 0])
 
-    em = EasyMail(email_account, easy_mail_settings)
-    em.send_email(mailing_list, email_message_contents)
+    em = EasyMail(email_account, email_settings)
+    em.send_email(mailing_list, email_contents)
     em.log_report()

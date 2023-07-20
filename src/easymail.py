@@ -5,6 +5,7 @@ from email.message import EmailMessage
 from email.headerregistry import Address
 
 from common import *
+from consts import *
 from mailing_list import *
 
 class EasyEmailMessage(EmailMessage):
@@ -12,17 +13,16 @@ class EasyEmailMessage(EmailMessage):
         super().__init__(policy=kwargs.get("policy"))
 
         if contents := kwargs.get("contents"):
+            if not contents:
+                raise Exception("contents must be provided")
             self['subject'] = contents.subject
             self['From'] = Address(contents.sender_name, *contents.sender_email.split('@'))
-            if contents.body_path:
-                if File(contents.body_path).file_type() == File.FileType.TXT: 
-                    self.set_content(contents.body)
-                elif File(contents.body_path).file_type() == File.FileType.HTML: 
-                    self.set_content(contents.body, subtype=File.FileType.HTML.value)
-                else:
-                    raise Exception("body file must be of type HTML or txt.")
-            elif contents.body:
-                    self.set_content(bytes(contents.body, 'utf-8').decode('unicode_escape'))
+            if contents.body_format == File.FileType.TXT: 
+                self.set_content(contents.body)
+            elif contents.body_format == File.FileType.HTML: 
+                self.set_content(contents.body, subtype=File.FileType.HTML.value)
+            else:
+                self.set_content(bytes(contents.body, 'utf-8').decode('unicode_escape'))
 
             if contents.attachments:
                 for att in contents.attachments:
@@ -68,9 +68,7 @@ class EasyMail:
                     if delta_ts:= delta_time_hrs(ts.get(contact)) < 24.:
                         block_reason = EasyMail.MessageBlockedReason.SpamProtectionPeriod
 
-                color = ""
-                action = ""
-                details = ""
+                color, action, details= "", "", ""
 
                 if block_reason == EasyMail.MessageBlockedReason.Allowed or self.settings.force_sending:
                     self._send(smtp, contact, msg, ind=ind, count=count)

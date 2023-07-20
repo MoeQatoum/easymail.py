@@ -56,7 +56,8 @@ class File:
             f.write(data)
  
     @staticmethod
-    def is_file(path) -> bool:
+    def is_file(path: str) -> bool:
+        if len(path) > 255: return False
         return pathlib.Path(path).is_file()
 
 def get_timestamp(timestamp_path: str, email: str):
@@ -75,10 +76,16 @@ def load_timestamp(timestamp_path: str) -> dict[str, str]:
 def load_attachment(attachment_path: str, mode = None) -> dict[str, str|File.FileType|bytes]:
     f = File(attachment_path)
     return {
-            "filename": f.file_name(),
-            "path": attachment_path,
-            "type": f.file_type(),
-            "subtype": "octet-stream",
-            "maintype": "application",
-            "data": f.read_file(mode),
+                "filename": f.file_name(),
+                "path": attachment_path,
+                "type": f.file_type(),
+                "subtype": "octet-stream",
+                "maintype": "application",
+                "data": f.read_file(mode),
             }
+
+def load_body(body: str) -> tuple[str, File.FileType]:
+    if File.is_file(body): 
+        file = File(body.strip().strip())
+        return file.read_file("r").strip().strip("\n"), file.file_type()
+    return body.strip().strip("\n"), File.FileType.UNKNOWN
