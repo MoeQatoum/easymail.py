@@ -8,6 +8,7 @@ from common import *
 from consts import *
 from mailing_list import *
 
+
 class EasyEmailMessage(EmailMessage):
     def __init__(self, **kwargs) -> None:
         super().__init__(policy=kwargs.get("policy"))
@@ -31,6 +32,7 @@ class EasyEmailMessage(EmailMessage):
         if to := kwargs.get("to"):
             self['To'] = Address(to.split("@")[0], *to.split("@"))
     
+
 class EasyMail:
     class MessageBlockedReason(enum.Enum):
         Allowed = 0

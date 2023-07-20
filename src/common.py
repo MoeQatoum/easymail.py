@@ -8,6 +8,7 @@ from consts import *
 
 from file_handling import *
 
+
 @dataclass
 class Attachment:
     filename: str
@@ -23,6 +24,7 @@ class Attachment:
     def to_dict(self) -> dict[str, str]:
         return {k:v for k,v in  asdict(self).items() if k in ["filename", "subtype", "maintype"]}
 
+
 @dataclass
 class EmailMessageContents:
     sender_name: str
@@ -35,7 +37,6 @@ class EmailMessageContents:
 
     def __post_init__(self) -> None:
         self.set_body(self.body)
-        print("post init", self.body)
 
     def set_body(self, body: str):
         self.body, self.body_format = load_body(body)
@@ -56,6 +57,7 @@ class EmailMessageContents:
             raise Exception(f"{len(replacement.keys())} tokens provided, while email body has {self.token_count()} replacement tokens.")
         self.body = re.sub(TOKEN_PATTERN, lambda match: replacement[match.group()], self.body)
 
+
 class AccountConfig(BaseModel):
     SMTP_server: str
     port: int
@@ -63,22 +65,26 @@ class AccountConfig(BaseModel):
     password: str
     timeout: int = 400
 
+
 class EasyMailSettings(BaseModel):
     spam_protection_period:int
     allow_duplicate: bool
     force_sending: bool
     delivery_report: bool
 
+
 def delta_time_hrs(time: str) -> float:
     now = datetime.now()
     ts = datetime.strptime(time, DATE_TIME_FORMAT)
     return abs((now - ts).total_seconds() / 3600)
+
 
 def update_timestamp(timestamp_path: str, email: str):
     ts_file = File(timestamp_path.strip().strip("\n"))
     ts_data = json.loads(ts_file.read_file())
     ts_data[email] = datetime.now().strftime(DATE_TIME_FORMAT)
     ts_file.write(json.dumps(ts_data), "w")
+
 
 def load_config(config_path: str) -> tuple[AccountConfig, EmailMessageContents, EasyMailSettings]:
     config = json.loads(File(config_path.strip().strip("\n")).read_file())

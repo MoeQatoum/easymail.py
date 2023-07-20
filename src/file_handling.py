@@ -60,6 +60,7 @@ class File:
         if len(path) > 255: return False
         return pathlib.Path(path).is_file()
 
+
 def get_timestamp(timestamp_path: str, email: str):
     ts_file = File(timestamp_path)
     ts_data: dict = json.loads(ts_file.read_file())
@@ -83,6 +84,7 @@ def load_attachment(attachment_path: str, mode = None) -> dict[str, str|File.Fil
                 "maintype": "application",
                 "data": f.read_file(mode),
             }
+
 
 def load_body(body: str) -> tuple[str, File.FileType]:
     if File.is_file(body): 
