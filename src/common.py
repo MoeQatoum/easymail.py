@@ -42,8 +42,10 @@ class EmailMessageContents:
         self.body, self.body_format = load_body(body)
         self.body_tokens = self.get_tokens()
     
-    def get_tokens(self) -> list[str]:
-        return [match.group() for match in re.finditer(TOKEN_PATTERN, self.body)]
+    def get_tokens(self, remove_duplicate=False) -> list[str]:
+        tokens = [match.group() for match in re.finditer(TOKEN_PATTERN, self.body)]
+        if remove_duplicate: return list(set(tokens))
+        return tokens
 
     def has_tokens(self) -> bool:
         return bool(self.body_tokens)
