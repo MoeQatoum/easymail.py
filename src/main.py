@@ -91,6 +91,9 @@ if __name__ == "__main__":
         if len(args.token) != len(list(set([t[0] for t in args.token]))): raise Exception("got duplicate tokens, review -t|--token arguments.")
         replace_tokens: dict = {t[0]:t[1] for t in args.token}
         email_contents.replace_tokens(replace_tokens)
+    else:
+        if (email_contents.body_tokens):
+            raise Exception(f"got email body with tokens {email_contents.body_tokens}, but no token replacement were provided!")
 
     print(f"[INFO] Subject: {email_contents.subject}")
     print(f"[INFO] Body path: {None if not args.body else args.body if File.is_file(args.body) else 'NOT A PATH'}")

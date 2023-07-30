@@ -40,16 +40,19 @@ class EmailMessageContents:
 
     def set_body(self, body: str):
         self.body, self.body_format = load_body(body)
-        self.body_tokens = [match.group() for match in re.finditer(TOKEN_PATTERN, self.body)]
+        self.body_tokens = self.get_tokens()
+    
+    def get_tokens(self) -> list[str]:
+        return [match.group() for match in re.finditer(TOKEN_PATTERN, self.body)]
 
     def has_tokens(self) -> bool:
         return bool(self.body_tokens)
     
     def token_count(self) -> int:
-        return len([match.group() for match in re.finditer(TOKEN_PATTERN, self.body)])
+        return len(self.get_tokens())
 
     def unique_tokens_count(self) -> int:
-        return len(list(set([match.group() for match in re.finditer(TOKEN_PATTERN, self.body)])))
+        return len(list(set(self.get_tokens())))
 
     def replace_tokens(self, replacement: dict[str, str]):
         if not self.has_tokens(): raise Exception("email body doesn't has and tokens.")
