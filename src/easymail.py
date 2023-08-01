@@ -14,8 +14,6 @@ class EasyEmailMessage(EmailMessage):
         super().__init__(policy=kwargs.get("policy"))
 
         if contents := kwargs.get("contents"):
-            if not contents:
-                raise Exception("contents must be provided")
             self['subject'] = contents.subject
             self['From'] = Address(contents.sender_name, *contents.sender_email.split('@'))
             if contents.body_format == File.FileType.TXT: 
@@ -28,9 +26,12 @@ class EasyEmailMessage(EmailMessage):
             if contents.attachments:
                 for att in contents.attachments:
                     self.add_attachment(att.data, **att.to_dict())
+        else: 
+            raise Exception("contents must be provided")
+
 
         if to := kwargs.get("to"):
-            self['To'] = Address(to.split("@")[0], *to.split("@"))
+            self['To'] = Address(to, *to.split("@"))
     
 
 class EasyMail:
@@ -58,7 +59,7 @@ class EasyMail:
         count = len(to)
         with self.smtp_server as smtp:
             self._log_in(smtp)
-            for ind, contact in enumerate(to):
+            for i, contact in enumerate(to):
                 msg = EasyEmailMessage(contents=contents, to=contact)
                 ts = load_timestamp("./timestamp.json")
                 block_reason = EasyMail.MessageBlockedReason.Allowed
@@ -73,7 +74,7 @@ class EasyMail:
                 color, action, details= "", "", ""
 
                 if block_reason == EasyMail.MessageBlockedReason.Allowed or self.settings.force_sending:
-                    self._send(smtp, contact, msg, ind=ind, count=count)
+                    self._send(smtp, contact, msg, ind=i, count=count)
                     color = G
                     if block_reason != EasyMail.MessageBlockedReason.Allowed:
                         action = "Forced"
@@ -93,7 +94,7 @@ class EasyMail:
                             details = f'", delta time {delta_time_hrs(datetime.now().strftime(DATE_TIME_FORMAT)):.2f} hrs'
                             color = Y
 
-                print(color + f'[{ind+1:0>3}-{count:0>3}] {action}: "' + UL + contact + W + color + '"' + details + W)
+                print(color + f'[{i+1:0>3}-{count:0>3}] {action}: "' + UL + contact + W + color + '"' + details + W)
 
         print("[INFO] Connection closed...")
 
