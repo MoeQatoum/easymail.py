@@ -3,6 +3,8 @@ from pydantic.dataclasses import dataclass
 from dataclasses import asdict
 from typing import List
 from datetime import datetime
+from email.message import EmailMessage
+from email.headerregistry import Address
 import re
 from consts import *
 
@@ -27,18 +29,18 @@ class Attachment:
 
 @dataclass
 class EmailMessageContents:
-    sender_name: str
     sender_email: str
     subject: str
+    sender_name: str | None = None
     attachments: List[Attachment] | None = None
-    body_tokens: List[str] = None
-    body: str = None
+    body_tokens: List[str] | None = None
+    body: str | None = None
     body_format: File.FileType | None = None
 
     def __post_init__(self) -> None:
         self.set_body(self.body)
 
-    def set_body(self, body: str):
+    def set_body(self, body: str) -> None:
         self.body, self.body_format = load_body(body)
         self.body_tokens = self.get_tokens()
     
@@ -56,11 +58,31 @@ class EmailMessageContents:
     def unique_tokens_count(self) -> int:
         return len(list(set(self.get_tokens())))
 
-    def replace_tokens(self, replacement: dict[str, str]):
+    def replace_tokens(self, replacement: dict[str, str]) -> None:
         if not self.has_tokens(): raise Exception("email body doesn't has and tokens.")
         if self.unique_tokens_count() != len(replacement.keys()): 
             raise Exception(f"{len(replacement.keys())} tokens provided, while email body has {self.token_count()} replacement tokens.")
         self.body = re.sub(TOKEN_PATTERN, lambda match: replacement[match.group()], self.body)
+    
+    def construct_email_message(self, to_email: str | None = None, to_name: str | None = None) -> EmailMessage:
+        msg = EmailMessage()
+        msg['subject'] = self.subject
+        msg['From'] = Address(self.sender_name, *self.sender_email.split('@'))
+        if to_email:
+            msg['To'] = Address(to_name if to_name else to_email, *to_email.split("@"))
+
+        if self.body_format == File.FileType.TXT: 
+            msg.set_content(self.body)
+        elif self.body_format == File.FileType.HTML: 
+            msg.set_content(self.body, subtype=File.FileType.HTML.value)
+        else:
+            msg.set_content(bytes(self.body, 'utf-8').decode('unicode_escape'))
+
+        if self.attachments:
+            for att in self.attachments:
+                msg.add_attachment(att.data, **att.to_dict())
+        
+        return msg
 
 
 class AccountConfig(BaseModel):
@@ -84,7 +106,7 @@ def delta_time_hrs(time: str) -> float:
     return abs((now - ts).total_seconds() / 3600)
 
 
-def update_timestamp(timestamp_path: str, email: str):
+def update_timestamp(timestamp_path: str, email: str) -> None:
     ts_file = File(timestamp_path.strip().strip("\n"))
     ts_data = json.loads(ts_file.read_file())
     ts_data[email] = datetime.now().strftime(DATE_TIME_FORMAT)

@@ -1,38 +1,11 @@
 
 import time, smtplib, sys, shutil
-
 from email.message import EmailMessage
-from email.headerregistry import Address
 
 from common import *
 from consts import *
 from mailing_list import *
 
-
-class EasyEmailMessage(EmailMessage):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(policy=kwargs.get("policy"))
-
-        if contents := kwargs.get("contents"):
-            self['subject'] = contents.subject
-            self['From'] = Address(contents.sender_name, *contents.sender_email.split('@'))
-            if contents.body_format == File.FileType.TXT: 
-                self.set_content(contents.body)
-            elif contents.body_format == File.FileType.HTML: 
-                self.set_content(contents.body, subtype=File.FileType.HTML.value)
-            else:
-                self.set_content(bytes(contents.body, 'utf-8').decode('unicode_escape'))
-
-            if contents.attachments:
-                for att in contents.attachments:
-                    self.add_attachment(att.data, **att.to_dict())
-        else: 
-            raise Exception("contents must be provided")
-
-
-        if to := kwargs.get("to"):
-            self['To'] = Address(to, *to.split("@"))
-    
 
 class EasyMail:
     class MessageBlockedReason(enum.Enum):
@@ -40,18 +13,12 @@ class EasyMail:
         BlackListedDestination = 1
         SpamProtectionPeriod = 2
     
-    def __init__(self, account: AccountConfig, settings: EasyMailSettings, **kwargs) -> None:
+    def __init__(self, account: AccountConfig, settings: EasyMailSettings, **kw) -> None:
         self.account = account
         self.settings = settings
         self.smtp_server = smtplib.SMTP(self.account.SMTP_server, self.account.port, timeout= self.account.timeout)
-
-        self.success = 0
-        self.refused = 0
-        self.forced = 0
-        self.black_listed = 0
-        self.spam_protection = 0
-
-        self.black_list = json.loads(File(kwargs["black_list"]).read_file()) if kwargs.get("black_list") else [] 
+        self.success, self.refused, self.forced, self.black_listed, self.spam_protection = 0, 0, 0, 0, 0
+        self.black_list = json.loads(File(kw["black_list"]).read_file()) if kw.get("black_list") else [] 
 
     def send_email(self, to: list[str] | str, contents: EmailMessageContents)-> None:
         if isinstance(to, str): to = [to]
@@ -60,7 +27,7 @@ class EasyMail:
         with self.smtp_server as smtp:
             self._log_in(smtp)
             for i, contact in enumerate(to):
-                msg = EasyEmailMessage(contents=contents, to=contact)
+                msg = contents.construct_email_message(contact)
                 ts = load_timestamp("./timestamp.json")
                 block_reason = EasyMail.MessageBlockedReason.Allowed
 
@@ -122,7 +89,7 @@ class EasyMail:
                 print(R + f"[SMTP ERROR]", e, W)
                 sys.exit()
 
-    def log_report(self):
+    def log_report(self) -> None:
         report_header          ="+++++++++++++++++++REPORT++++++++++++++++++"
         report_suc             = f"| Report: {self.success} email(s) successfully sent."
         report_spam_protection = f"| Report: {self.spam_protection} email(s) in spam protection."

@@ -37,7 +37,7 @@ class File:
 
         return data
 
-    def readlines(self, mode = "r"):
+    def readlines(self, mode = "r") -> list[str|bytes]:
         with open(self.path, mode) as f:
             lines = f.readlines()
         return lines
@@ -61,7 +61,7 @@ class File:
         return pathlib.Path(path).is_file()
 
 
-def get_timestamp(timestamp_path: str, email: str):
+def get_timestamp(timestamp_path: str, email: str) -> None:
     ts_file = File(timestamp_path)
     ts_data: dict = json.loads(ts_file.read_file())
     if ts_data.get(email):
