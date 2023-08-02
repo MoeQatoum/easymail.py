@@ -64,8 +64,7 @@ class EmailMessageContents:
     def replace_tokens(self, replacement: dict[str, str]) -> None:
         if not self.has_tokens(): raise Exception("email body doesn't has and tokens.")
         if self.unique_tokens_count() != len(replacement.keys()):
-            raise Exception(f"""\n{R}{len(replacement.keys())} tokens provided: {replacement}
-                                while email body has {self.unique_tokens_count()} tokens: {self.get_unique_tokens()}{W}""")
+            raise Exception(f"\n{R}{len(replacement.keys())} token(s) provided: {replacement}\nwhile email body has {self.unique_tokens_count()} token(s): {self.get_unique_tokens()}{W}")
         self.body = re.sub(TOKEN_PATTERN, lambda match: replacement[match.group()], self.body)
     
     def construct_email_message(self, to_email: str | None = None, to_name: str | None = None) -> EmailMessage:
