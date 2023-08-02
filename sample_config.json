@@ -25,7 +25,10 @@
                 "subType": "octet-stream",
                 "mainType": "application"
             }
-        ]
+        ],
+        "default_tokens": {
+            "{TOKEN}": "token replacement"
+        }
     },
     "easymail_settings": {
         "spam_protection_period": 86000,

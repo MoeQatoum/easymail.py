@@ -31,6 +31,7 @@ class Attachment:
 class EmailMessageContents:
     sender_email: str
     subject: str
+    default_tokens: dict | None = None
     sender_name: str | None = None
     attachments: List[Attachment] | None = None
     body_tokens: List[str] | None = None
