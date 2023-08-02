@@ -44,24 +44,28 @@ class EmailMessageContents:
         self.body, self.body_format = load_body(body)
         self.body_tokens = self.get_tokens()
     
+    def has_tokens(self) -> bool:
+        return bool(self.body_tokens)
+
     def get_tokens(self, remove_duplicate=False) -> list[str]:
         tokens = [match.group() for match in re.finditer(TOKEN_PATTERN, self.body)]
         if remove_duplicate: return list(set(tokens))
         return tokens
-
-    def has_tokens(self) -> bool:
-        return bool(self.body_tokens)
     
     def token_count(self) -> int:
         return len(self.get_tokens())
+
+    def get_unique_tokens(self) -> list[str]:
+        return list(set(self.get_tokens()))
 
     def unique_tokens_count(self) -> int:
         return len(list(set(self.get_tokens())))
 
     def replace_tokens(self, replacement: dict[str, str]) -> None:
         if not self.has_tokens(): raise Exception("email body doesn't has and tokens.")
-        if self.unique_tokens_count() != len(replacement.keys()): 
-            raise Exception(f"{len(replacement.keys())} tokens provided, while email body has {self.token_count()} replacement tokens.")
+        if self.unique_tokens_count() != len(replacement.keys()):
+            raise Exception(f"""\n{R}{len(replacement.keys())} tokens provided: {replacement}
+                                while email body has {self.unique_tokens_count()} tokens: {self.get_unique_tokens()}{W}""")
         self.body = re.sub(TOKEN_PATTERN, lambda match: replacement[match.group()], self.body)
     
     def construct_email_message(self, to_email: str | None = None, to_name: str | None = None) -> EmailMessage:

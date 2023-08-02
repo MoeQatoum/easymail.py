@@ -89,7 +89,7 @@ if __name__ == "__main__":
 
     if args.token:
         if len(args.token) != len(list(set([t[0] for t in args.token]))): raise Exception("got duplicate tokens, review -t|--token arguments.")
-        replace_tokens: dict = {t[0]:t[1] for t in args.token}
+        replace_tokens: dict = {"{"+t[0]+"}":t[1] for t in args.token}
         email_contents.replace_tokens(replace_tokens)
     else:
         if (email_contents.body_tokens):
@@ -98,7 +98,6 @@ if __name__ == "__main__":
     print(f"[INFO] Subject: {email_contents.subject}")
     print(f"[INFO] Body path: {None if not args.body else args.body if File.is_file(args.body) else 'NOT A PATH'}")
     print(f"[INFO] Attachment path: {[att.path for att in email_contents.attachments]}")
-
 
     mailing_list = get_mailing_list(args.mailList, *[int(range) for range in args.range.split("-")] if args.range else [1, 0])
 
